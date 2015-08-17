@@ -1,0 +1,56 @@
+# Maintainer: Sandy Carter (bwrsandman) <bwrsandman@gmail.com>
+
+pkgname=pandora-libraries-git
+_gitname="pandora-libraries"
+pkgver=20130612
+pkgrel=1
+pkgdesc="Basic collection of functions and tools to make working Pandora-specific operations easier."
+url="http://openpandora.org/"
+arch=('i686' 'x86_64' 'armv7h')
+license=('LGPL')
+source=('git://git.openpandora.org/pandora-libraries.git' 'pndnotifyd.service')
+md5sums=('SKIP' '70f7021fb1adcae8f5f7bdcb451fe192')
+depends=('sdl' 'sdl_ttf' 'sdl_gfx' 'sdl_image' 'cdrkit' 'pandora-misc-git')
+optdepends=('zenity: needed for some pnd applications'
+            'sdl_mixer: dinksmallwood.pnd')
+makedepends=('git')
+install='pandora-libraries-git.install'
+
+pkgver() {
+    cd "$srcdir/$_gitname"
+    git log -1 --format="%cd" --date=short | tr -d '-'
+}
+
+prepare() {
+    cd "$srcdir/$_gitname"
+    sed -i "s,cp libpnd\* deployment/usr/lib,cp -P libpnd\* deployment/usr/lib," Makefile
+}
+
+build() {
+  cd "$srcdir/$_gitname"
+  make
+}
+
+package() {
+  cd "$srcdir/$_gitname"
+
+  make deploy
+
+  install -d -m755 "$pkgdir"/usr/
+  cp -r {deployment,"$pkgdir"}/usr/bin
+  cp -r {deployment,"$pkgdir"}/usr/lib
+  install -d -m755 "$pkgdir"/usr/share
+  cp -r deployment/usr/pandora "$pkgdir"/usr/share/pandora
+
+  install -d -m755 "$pkgdir"/etc/
+  cp -r {deployment,"$pkgdir"}/etc/pandora/
+
+  # replace /usr/pandora/ with /usr/share/pandora
+  sed -i 's,/usr/pandora,/usr/share/pandora,' "$pkgdir"/etc/pandora/conf/apps
+  sed -i 's,/usr/pandora,/usr/share/pandora,' "$pkgdir"/usr/share/pandora/scripts/pnd_run.sh
+
+  rm "$pkgdir"/usr/bin/pndevmapperd
+
+  install -Dm644 "$srcdir/pndnotifyd.service"           "$pkgdir/usr/lib/systemd/system/pndnotifyd.service"
+
+}
